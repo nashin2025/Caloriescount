@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Search, Camera, ScanLine, Plus, X } from 'lucide-react';
 import type { MealType, FoodSearchResult } from '@/types';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/toast';
 
 const MEAL_TYPES: { value: MealType; label: string; emoji: string }[] = [
   { value: 'breakfast', label: 'Breakfast', emoji: '☀️' },
@@ -39,6 +40,7 @@ export default function LogPage() {
   const [manualMode, setManualMode] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const { showToast } = useToast();
 
   const searchFood = async () => {
     if (!searchQuery.trim()) return;
@@ -61,6 +63,7 @@ export default function LogPage() {
       }
     }, 500);
     return () => clearTimeout(debounce);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   const handleSelectFood = (food: FoodSearchResult) => {
@@ -110,12 +113,14 @@ export default function LogPage() {
         logged_date: new Date().toISOString().split('T')[0],
       });
 
+      showToast(`${name} logged successfully!`, 'success');
       setLogged(true);
       setTimeout(() => {
         router.push('/dashboard');
       }, 1500);
     } catch (error) {
       console.error('Log error:', error);
+      showToast('Failed to log food', 'error');
     } finally {
       setLoading(false);
     }

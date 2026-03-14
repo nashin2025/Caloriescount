@@ -47,7 +47,18 @@ export async function searchFoodNutrition(foodName: string): Promise<NutritionDa
   }
 }
 
-export async function scanBarcode(barcode: string) {
+export async function scanBarcode(barcode: string): Promise<{
+  name: string;
+  brand: string;
+  barcode: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  serving_size: string;
+  nutrition_grade?: string;
+} | null> {
   try {
     const response = await fetch(
       `${OFF_API_BASE}/api/v2/product/${barcode}.json`

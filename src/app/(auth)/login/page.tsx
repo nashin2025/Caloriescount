@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -18,6 +18,27 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    async function checkUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('onboarding_complete')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.onboarding_complete) {
+          router.push('/dashboard');
+        } else {
+          router.push('/onboarding');
+        }
+      }
+    }
+    checkUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();

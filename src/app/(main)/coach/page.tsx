@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Send, Sparkles, UtensilsCrossed, MessageCircle } from 'lucide-react';
+import { Loader2, Send, Sparkles, UtensilsCrossed, MessageCircle, Dumbbell } from 'lucide-react';
 import type { Profile, ChatHistory } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +35,7 @@ export default function CoachPage() {
 
   useEffect(() => {
     loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -50,6 +51,8 @@ export default function CoachPage() {
       .select('*')
       .eq('id', user.id)
       .single();
+
+    if (!profileData) return;
 
     setProfile(profileData);
 
@@ -74,7 +77,26 @@ export default function CoachPage() {
       today_carbs: todayLogs.reduce((sum, l) => sum + Number(l.carbs_g), 0),
       today_fat: todayLogs.reduce((sum, l) => sum + Number(l.fat_g), 0),
       dietary_restrictions: profileData?.dietary_restrictions || [],
+      equipment_preferences: profileData?.equipment_preferences || ['none'],
     });
+
+    const { data: chatHistory } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(20);
+
+    if (chatHistory && chatHistory.length > 0) {
+      const loadedMessages = chatHistory.map((msg: any) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }));
+      setMessages([
+        { role: 'assistant', content: 'Welcome back! I\'m your AI nutrition coach. Ask me anything about healthy eating, meal planning, or nutrition tips! 🌟' },
+        ...loadedMessages,
+      ]);
+    }
   };
 
   const sendMessage = async (message?: string) => {
@@ -151,6 +173,47 @@ export default function CoachPage() {
     }
   };
 
+  const generateExercisePlan = async () => {
+    setLoading(true);
+    setMessages(prev => [...prev, { role: 'user', content: 'Generate an exercise plan for me' }]);
+
+    try {
+      const res = await fetch('/api/ai/exercise-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          focus: context?.goal || 'general fitness',
+          difficulty: 'intermediate',
+          daysPerWeek: 5,
+          equipment: context?.equipment_preferences || ['none'],
+          goals: context?.goal === 'lose' ? 'weight loss' : context?.goal === 'gain' ? 'muscle building' : 'maintain fitness',
+        }),
+      });
+
+      const data = await res.json();
+      
+      if (data.exercisePlan) {
+        const plan = data.exercisePlan;
+        let response = `💪 **Your Weekly Exercise Plan** (${plan.days_per_week} days/week)\n\n`;
+        
+        for (const day of plan.exercises || []) {
+          response += `**${day.day}**\n`;
+          for (const ex of day.exercises || []) {
+            response += `  • ${ex.name} - ${ex.sets}x${ex.reps} (~${ex.calories_burned} cal)\n`;
+          }
+          response += '\n';
+        }
+        
+        setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      }
+    } catch (error) {
+      console.error('Exercise plan error:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I couldn\'t generate an exercise plan right now.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] animate-in">
       <div className="flex items-center justify-between mb-4">
@@ -158,10 +221,16 @@ export default function CoachPage() {
           <span className="text-2xl">🤖</span>
           AI Coach
         </h1>
-        <Button variant="outline" size="sm" onClick={generateMealPlan} disabled={loading}>
-          <UtensilsCrossed className="h-4 w-4 mr-2" />
-          Meal Plan
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={generateExercisePlan} disabled={loading}>
+            <Dumbbell className="h-4 w-4 mr-2" />
+            Exercise Plan
+          </Button>
+          <Button variant="outline" size="sm" onClick={generateMealPlan} disabled={loading}>
+            <UtensilsCrossed className="h-4 w-4 mr-2" />
+            Meal Plan
+          </Button>
+        </div>
       </div>
 
       <Card className="flex-1 flex flex-col overflow-hidden">

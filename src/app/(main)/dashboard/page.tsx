@@ -18,10 +18,12 @@ import {
   Utensils,
   Target,
   Award,
+  Trash2,
   Loader2
 } from 'lucide-react';
 import { cn, formatNumber, calculateProgress, getMealTypeLabel } from '@/lib/utils';
 import type { Profile, FoodLog, DailySummary, Streak } from '@/types';
+import { useToast } from '@/components/ui/toast';
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -29,10 +31,13 @@ export default function DashboardPage() {
   const [todaySummary, setTodaySummary] = useState<DailySummary | null>(null);
   const [streak, setStreak] = useState<Streak | null>(null);
   const [todayWater, setTodayWater] = useState(0);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const supabase = createClient();
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -100,6 +105,20 @@ export default function DashboardPage() {
     });
 
     setTodayWater((prev) => Math.min(prev + amount, profile.water_goal_ml));
+    showToast(`Added ${amount}ml water`, 'success');
+  };
+
+  const deleteFoodLog = async (logId: string) => {
+    setDeletingId(logId);
+    try {
+      await supabase.from('food_logs').delete().eq('id', logId);
+      showToast('Food removed', 'success');
+      loadData();
+    } catch (error) {
+      showToast('Failed to delete', 'error');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   if (loading) {
@@ -326,17 +345,32 @@ export default function DashboardPage() {
                 {todaySummary?.meals[meal]?.map((log) => (
                   <div
                     key={log.id}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group"
                   >
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium">{log.food_name}</p>
                       <p className="text-xs text-muted-foreground">
                         P: {log.protein_g}g • C: {log.carbs_g}g • F: {log.fat_g}g
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">{log.calories}</p>
-                      <p className="text-xs text-muted-foreground">cal</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="font-semibold">{log.calories}</p>
+                        <p className="text-xs text-muted-foreground">cal</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => deleteFoodLog(log.id)}
+                        disabled={deletingId === log.id}
+                      >
+                        {deletingId === log.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        )}
+                      </Button>
                     </div>
                   </div>
                 ))}

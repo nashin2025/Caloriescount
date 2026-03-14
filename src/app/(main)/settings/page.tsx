@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -14,12 +14,14 @@ import {
   Target, 
   LogOut,
   Loader2,
-  Save
+  Save,
+  Dumbbell
 } from 'lucide-react';
 import { calculateBMR, calculateTDEE, calculateMacros } from '@/lib/utils';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     age: '',
@@ -30,9 +32,41 @@ export default function SettingsPage() {
     activityLevel: '',
     dietGoal: '',
     waterGoal: '',
+    equipmentPreferences: [] as string[],
   });
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    async function fetchProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (data && !error) {
+        setFormData({
+          name: data.name || '',
+          age: data.age?.toString() || '',
+          gender: data.gender || '',
+          height: data.height_cm?.toString() || '',
+          currentWeight: data.current_weight_kg?.toString() || '',
+          targetWeight: data.target_weight_kg?.toString() || '',
+          activityLevel: data.activity_level || '',
+          dietGoal: data.diet_goal || '',
+          waterGoal: data.water_goal_ml?.toString() || '',
+          equipmentPreferences: data.equipment_preferences || ['none'],
+        });
+      }
+      setFetching(false);
+    }
+    fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -41,6 +75,17 @@ export default function SettingsPage() {
 
   const updateForm = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleEquipment = (equipment: string) => {
+    setFormData(prev => {
+      const current = prev.equipmentPreferences || [];
+      if (current.includes(equipment)) {
+        return { ...prev, equipmentPreferences: current.filter(e => e !== equipment) };
+      } else {
+        return { ...prev, equipmentPreferences: [...current, equipment] };
+      }
+    });
   };
 
   const saveProfile = async () => {
@@ -76,6 +121,8 @@ export default function SettingsPage() {
         carbs_target_g: macros.carbs,
         fat_target_g: macros.fat,
         water_goal_ml: parseInt(formData.waterGoal) || 2000,
+        equipment_preferences: formData.equipmentPreferences.length > 0 ? formData.equipmentPreferences : ['none'],
+        updated_at: new Date().toISOString(),
       }).eq('id', user.id);
 
       alert('Profile updated successfully!');
@@ -85,6 +132,14 @@ export default function SettingsPage() {
       setLoading(false);
     }
   };
+
+  if (fetching) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 animate-in">
@@ -212,6 +267,36 @@ export default function SettingsPage() {
                 <SelectItem value="very_active">Very Active</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Dumbbell className="h-4 w-4" />
+              Available Equipment
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'none', label: 'No Equipment', desc: 'Bodyweight only' },
+                { value: 'dumbbells', label: 'Dumbbells', desc: 'Adjustable or fixed' },
+                { value: 'resistance_bands', label: 'Resistance Bands', desc: 'Elastic bands' },
+                { value: 'pull_up_bar', label: 'Pull-up Bar', desc: 'Door or wall mounted' },
+                { value: 'kettlebell', label: 'Kettlebell', desc: 'Weighted ball' },
+                { value: 'gym', label: 'Gym Access', desc: 'Full gym equipment' },
+              ].map((eq) => (
+                <button
+                  key={eq.value}
+                  type="button"
+                  onClick={() => toggleEquipment(eq.value)}
+                  className={`p-3 rounded-lg border-2 text-left transition-all ${
+                    formData.equipmentPreferences?.includes(eq.value)
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="font-medium text-sm">{eq.label}</div>
+                  <div className="text-xs text-muted-foreground">{eq.desc}</div>
+                </button>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>

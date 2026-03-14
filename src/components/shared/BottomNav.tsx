@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, PlusCircle, MessageCircle, TrendingUp, Settings } from 'lucide-react';
+import { Home, PlusCircle, MessageCircle, TrendingUp, Settings, Dumbbell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/log', label: 'Log', icon: PlusCircle },
+  { href: '/exercise', label: 'Exercise', icon: Dumbbell },
   { href: '/coach', label: 'Coach', icon: MessageCircle },
   { href: '/progress', label: 'Progress', icon: TrendingUp },
   { href: '/settings', label: 'Settings', icon: Settings },

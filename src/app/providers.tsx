@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useAppStore } from '@/store/store';
+import { ToastProvider } from '@/components/ui/toast';
 
 export function Providers({ children }: { children: ReactNode }) {
   const { setLoading } = useAppStore();
@@ -10,5 +11,9 @@ export function Providers({ children }: { children: ReactNode }) {
     setLoading(false);
   }, [setLoading]);
 
-  return <>{children}</>;
+  return (
+    <ToastProvider>
+      {children}
+    </ToastProvider>
+  );
 }

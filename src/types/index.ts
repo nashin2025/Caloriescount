@@ -4,6 +4,9 @@ export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'ver
 export type UnitPreference = 'metric' | 'imperial';
 export type Theme = 'light' | 'dark' | 'system';
 export type FoodSource = 'openfoodfacts' | 'edamam' | 'fallback' | 'manual';
+export type Equipment = 'none' | 'dumbbells' | 'resistance_bands' | 'gym' | 'pull_up_bar' | 'kettlebell';
+export type ExerciseDifficulty = 'beginner' | 'intermediate' | 'advanced';
+export type MuscleGroup = 'chest' | 'back' | 'shoulders' | 'biceps' | 'triceps' | 'legs' | 'core' | 'full_body' | 'cardio';
 
 export interface Profile {
   id: string;
@@ -17,6 +20,7 @@ export interface Profile {
   activity_level: ActivityLevel;
   diet_goal: DietGoal;
   dietary_restrictions: string[];
+  equipment_preferences: Equipment[];
   daily_calorie_target: number;
   protein_target_g: number;
   carbs_target_g: number;
@@ -79,6 +83,41 @@ export interface Streak {
   longest_streak: number;
   last_logged_date?: string;
   updated_at: string;
+}
+
+export interface ExerciseLog {
+  id: string;
+  user_id: string;
+  exercise_name: string;
+  muscle_group?: MuscleGroup;
+  duration_min?: number;
+  reps?: number;
+  sets?: number;
+  equipment_used?: Equipment[];
+  difficulty?: ExerciseDifficulty;
+  logged_date: string;
+  created_at: string;
+}
+
+export interface ExercisePlan {
+  focus: string;
+  difficulty: ExerciseDifficulty;
+  days_per_week: number;
+  exercises: {
+    day: string;
+    exercises: ExercisePlanItem[];
+  }[];
+}
+
+export interface ExercisePlanItem {
+  name: string;
+  muscle_groups: MuscleGroup[];
+  duration_min?: number;
+  sets?: number;
+  reps?: number;
+  equipment: Equipment[];
+  instructions: string[];
+  calories_burned: number;
 }
 
 export interface NutritionData {

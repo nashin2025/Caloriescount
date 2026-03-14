@@ -9,10 +9,16 @@ export const metadata: Metadata = {
   title: 'NutriAI - Smart Calorie Counter',
   description: 'AI-powered calorie counter and diet assistant. Track nutrition, get meal plans, and reach your goals with smart AI coaching.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icons/icon.svg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'NutriAI',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
 };
 

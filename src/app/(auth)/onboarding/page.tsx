@@ -122,7 +122,7 @@ export default function OnboardingPage() {
 
       const macros = calculateMacros(adjustedCalories, formData.dietGoal, weight);
 
-      const { error: profileError } = await supabase.from('profiles').insert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: user.id,
         name: formData.name,
         email: user.email,
@@ -140,17 +140,19 @@ export default function OnboardingPage() {
         water_goal_ml: weight * 35,
         target_date: formData.targetDate,
         onboarding_complete: true,
+        updated_at: new Date().toISOString(),
       });
 
       if (profileError) throw profileError;
 
-      const { error: streakError } = await supabase.from('streaks').insert({
+      const { error: streakError } = await supabase.from('streaks').upsert({
         user_id: user.id,
         current_streak: 0,
         longest_streak: 0,
+        updated_at: new Date().toISOString(),
       });
 
-      if (streakError && !streakError.message.includes('duplicate')) {
+      if (streakError) {
         throw streakError;
       }
 
