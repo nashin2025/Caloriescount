@@ -3,6 +3,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useAppStore } from '@/store/store';
 import { ToastProvider } from '@/components/ui/toast';
+import { ThemeProvider } from 'next-themes';
 
 export function Providers({ children }: { children: ReactNode }) {
   const { setLoading } = useAppStore();
@@ -12,8 +13,10 @@ export function Providers({ children }: { children: ReactNode }) {
   }, [setLoading]);
 
   return (
-    <ToastProvider>
-      {children}
-    </ToastProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ToastProvider>
+        {children}
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

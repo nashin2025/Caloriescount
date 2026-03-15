@@ -9,13 +9,17 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { useTheme } from 'next-themes';
 import { 
   User, 
   Target, 
   LogOut,
   Loader2,
   Save,
-  Dumbbell
+  Dumbbell,
+  Moon,
+  Sun,
+  Monitor
 } from 'lucide-react';
 import { calculateBMR, calculateTDEE, calculateMacros } from '@/lib/utils';
 
@@ -36,6 +40,12 @@ export default function SettingsPage() {
   });
   const router = useRouter();
   const supabase = createClient();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -297,6 +307,44 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sun className="h-5 w-5" />
+            Appearance
+          </CardTitle>
+          <CardDescription>Customize how the app looks</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Button
+              variant={mounted && theme === 'light' ? 'default' : 'outline'}
+              className="flex-1"
+              onClick={() => setTheme('light')}
+            >
+              <Sun className="mr-2 h-4 w-4" />
+              Light
+            </Button>
+            <Button
+              variant={mounted && theme === 'dark' ? 'default' : 'outline'}
+              className="flex-1"
+              onClick={() => setTheme('dark')}
+            >
+              <Moon className="mr-2 h-4 w-4" />
+              Dark
+            </Button>
+            <Button
+              variant={mounted && theme === 'system' ? 'default' : 'outline'}
+              className="flex-1"
+              onClick={() => setTheme('system')}
+            >
+              <Monitor className="mr-2 h-4 w-4" />
+              System
+            </Button>
           </div>
         </CardContent>
       </Card>
