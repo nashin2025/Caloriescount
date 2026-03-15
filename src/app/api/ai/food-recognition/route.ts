@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!XAI_API_KEY) {
-      return NextResponse.json({ error: 'xAI API key not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'AI food recognition requires xAI API key. Please configure XAI_API_KEY in your environment.' }, { status: 503 });
     }
 
     const formData = await request.formData();
@@ -69,6 +69,12 @@ Provide realistic estimates based on what you see.`;
       }),
     });
     const data = await res.json();
+    
+    if (data.error) {
+      console.error('xAI API error:', data.error);
+      return NextResponse.json({ error: 'AI service error: ' + data.error.message }, { status: 502 });
+    }
+    
     response = data.choices?.[0]?.message?.content || '{}';
     
     const clean = response.replace(/```json|```/g, '').trim();

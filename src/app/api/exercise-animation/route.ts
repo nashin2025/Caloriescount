@@ -5,6 +5,10 @@ import { checkRateLimit, getRateLimitIdentifier } from '@/lib/rate-limit';
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const IS_XAI = GROQ_API_KEY?.startsWith('xai-');
 
+if (!GROQ_API_KEY) {
+  throw new Error('GROQ_API_KEY is not configured');
+}
+
 async function getAIResponse(exerciseName: string): Promise<{
   instructions: string[];
   animation: string;
