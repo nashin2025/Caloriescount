@@ -51,7 +51,7 @@ Provide realistic estimates based on what you see.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'grok-2-vision-1212',
+        model: 'grok-vision-beta',
         messages: [
           { 
             role: 'system', 
