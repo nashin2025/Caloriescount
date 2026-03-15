@@ -104,7 +104,7 @@ export const useAppStore = create<AppState>()(
       reset: () => set(initialState),
     }),
     {
-      name: 'nutriai-storage',
+      name: 'caloriescount-storage',
       partialize: (state) => ({
         profile: state.profile,
         todayWater: state.todayWater,
