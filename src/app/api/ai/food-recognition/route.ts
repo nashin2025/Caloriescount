@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const XAI_API_KEY = process.env.XAI_API_KEY;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export const runtime = 'nodejs';
 
@@ -15,8 +17,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!XAI_API_KEY && !GROQ_API_KEY) {
-      return NextResponse.json({ error: 'AI food recognition requires an API key. Please configure XAI_API_KEY or GROQ_API_KEY in your environment.' }, { status: 503 });
+    if (!GEMINI_API_KEY && !XAI_API_KEY) {
+      return NextResponse.json({ error: 'AI food recognition requires an API key. Configure GEMINI_API_KEY (free) or XAI_API_KEY in your environment.' }, { status: 503 });
     }
 
     const formData = await request.formData();
@@ -29,9 +31,62 @@ export async function POST(request: NextRequest) {
     const bytes = await image.arrayBuffer();
     const base64 = Buffer.from(bytes).toString('base64');
     const mimeType = image.type || 'image/jpeg';
-    const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    const prompt = `Analyze this food image and provide nutritional information. Return ONLY valid JSON in this exact format:
+    let nutrition: Record<string, unknown>;
+
+    if (GEMINI_API_KEY) {
+      try {
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        const prompt = `You are a nutritionist expert. Analyze this food image and provide nutritional information. 
+        
+Return ONLY valid JSON in this exact format:
+{
+  "food_name": "estimated food name",
+  "calories": 0,
+  "protein_g": 0,
+  "carbs_g": 0,
+  "fat_g": 0,
+  "serving_size": "estimated serving size",
+  "confidence": 0.0
+}
+
+Provide realistic estimates based on what you see in the image.`;
+
+        const imagePart = {
+          inlineData: {
+            data: base64,
+            mimeType: mimeType
+          }
+        };
+
+        const result = await model.generateContent([prompt, imagePart]);
+        const response = result.response.text();
+        
+        const clean = response.replace(/```json|```/g, '').trim();
+        
+        try {
+          nutrition = JSON.parse(clean);
+        } catch {
+          nutrition = {
+            food_name: 'Unknown food',
+            calories: 200,
+            protein_g: 10,
+            carbs_g: 25,
+            fat_g: 8,
+            serving_size: '1 serving',
+            confidence: 0.3
+          };
+        }
+      } catch (geminiError) {
+        console.error('Gemini API error:', geminiError);
+        return NextResponse.json({ error: 'Google Gemini failed. Try using the search or manual entry instead.' }, { status: 502 });
+      }
+    } else if (XAI_API_KEY) {
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      
+      const prompt = `Analyze this food image and provide nutritional information. Return ONLY valid JSON in this exact format:
 {
   "food_name": "estimated food name",
   "calories": 0,
@@ -44,26 +99,14 @@ export async function POST(request: NextRequest) {
 
 Provide realistic estimates based on what you see.`;
 
-    let response: string;
-    let nutrition: Record<string, unknown>;
-
-    if (!XAI_API_KEY && !GROQ_API_KEY) {
-      return NextResponse.json({ error: 'AI food recognition requires an API key. Please configure XAI_API_KEY or GROQ_API_KEY in your environment.' }, { status: 503 });
-    }
-
-    const isGroqVision = GROQ_API_KEY && !GROQ_API_KEY.startsWith('xai-');
-    
-    let res: Response;
-    
-    if (XAI_API_KEY) {
-      res = await fetch('https://api.x.ai/v1/chat/completions', {
+      const res = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${XAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'grok-vision-beta',
+          model: 'grok-2-1212',
           messages: [
             { 
               role: 'system', 
@@ -80,47 +123,35 @@ Provide realistic estimates based on what you see.`;
           max_tokens: 1000,
         }),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('xAI API error:', res.status, errorData);
+        return NextResponse.json({ error: 'xAI vision failed. Try using search or manual entry.' }, { status: 502 });
+      }
+
+      const data = await res.json();
+      const response = data.choices?.[0]?.message?.content || '{}';
+      
+      const clean = response.replace(/```json|```/g, '').trim();
+      try {
+        nutrition = JSON.parse(clean);
+      } catch {
+        nutrition = {
+          food_name: 'Unknown food',
+          calories: 200,
+          protein_g: 10,
+          carbs_g: 25,
+          fat_g: 8,
+          serving_size: '1 serving',
+          confidence: 0.3
+        };
+      }
     } else {
-      return NextResponse.json({ error: 'Vision model not available. Please use an xAI API key (XAI_API_KEY) for food image recognition.' }, { status: 503 });
+      return NextResponse.json({ error: 'Vision AI not available. Please use search or manual entry.' }, { status: 503 });
     }
 
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      console.error('xAI API error:', res.status, errorData);
-      return NextResponse.json({ 
-        error: `AI service error (${res.status}): ${errorData.error?.message || 'Unknown error'}` 
-      }, { status: 502 });
-    }
-    
-    const data = await res.json();
-    
-    if (data.error) {
-      console.error('xAI API error:', data.error);
-      return NextResponse.json({ error: 'AI service error: ' + (data.error.message || JSON.stringify(data.error)) }, { status: 502 });
-    }
-    
-    if (!data.choices || data.choices.length === 0) {
-      console.error('No choices in response:', data);
-      return NextResponse.json({ error: 'AI returned empty response' }, { status: 502 });
-    }
-    
-    response = data.choices[0]?.message?.content || '{}';
-    
-    const clean = response.replace(/```json|```/g, '').trim();
-    try {
-      nutrition = JSON.parse(clean);
-    } catch {
-      nutrition = {
-        food_name: 'Unknown food',
-        calories: 200,
-        protein_g: 10,
-        carbs_g: 25,
-        fat_g: 8,
-        serving_size: '1 serving',
-        confidence: 0.3
-      };
-    }
-
+    const dataUrl = `data:${mimeType};base64,${base64}`;
     return NextResponse.json({ 
       ...nutrition,
       imageUrl: dataUrl
@@ -128,6 +159,6 @@ Provide realistic estimates based on what you see.`;
 
   } catch (error) {
     console.error('Food recognition error:', error);
-    return NextResponse.json({ error: 'Failed to recognize food' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to recognize food. Please try search or manual entry.' }, { status: 500 });
   }
 }
