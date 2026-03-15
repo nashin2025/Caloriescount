@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 const XAI_API_KEY = process.env.XAI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,8 +15,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!XAI_API_KEY) {
-      return NextResponse.json({ error: 'AI food recognition requires xAI API key. Please configure XAI_API_KEY in your environment.' }, { status: 503 });
+    if (!XAI_API_KEY && !GROQ_API_KEY) {
+      return NextResponse.json({ error: 'AI food recognition requires an API key. Please configure XAI_API_KEY or GROQ_API_KEY in your environment.' }, { status: 503 });
     }
 
     const formData = await request.formData();
@@ -44,30 +47,42 @@ Provide realistic estimates based on what you see.`;
     let response: string;
     let nutrition: Record<string, unknown>;
 
-    const res = await fetch('https://api.x.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${XAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'grok-vision-beta',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a nutritionist expert. Analyze food images and estimate nutritional content. Return ONLY valid JSON.' 
-          },
-          { 
-            role: 'user', 
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: dataUrl } }
-            ]
-          }
-        ],
-        max_tokens: 1000,
-      }),
-    });
+    if (!XAI_API_KEY && !GROQ_API_KEY) {
+      return NextResponse.json({ error: 'AI food recognition requires an API key. Please configure XAI_API_KEY or GROQ_API_KEY in your environment.' }, { status: 503 });
+    }
+
+    const isGroqVision = GROQ_API_KEY && !GROQ_API_KEY.startsWith('xai-');
+    
+    let res: Response;
+    
+    if (XAI_API_KEY) {
+      res = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${XAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'grok-vision-beta',
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are a nutritionist expert. Analyze food images and estimate nutritional content. Return ONLY valid JSON.' 
+            },
+            { 
+              role: 'user', 
+              content: [
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: dataUrl } }
+              ]
+            }
+          ],
+          max_tokens: 1000,
+        }),
+      });
+    } else {
+      return NextResponse.json({ error: 'Vision model not available. Please use an xAI API key (XAI_API_KEY) for food image recognition.' }, { status: 503 });
+    }
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
