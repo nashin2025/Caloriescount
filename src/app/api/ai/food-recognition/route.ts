@@ -65,17 +65,31 @@ Provide realistic estimates based on what you see.`;
             ]
           }
         ],
-        max_tokens: 500,
+        max_tokens: 1000,
       }),
     });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error('xAI API error:', res.status, errorData);
+      return NextResponse.json({ 
+        error: `AI service error (${res.status}): ${errorData.error?.message || 'Unknown error'}` 
+      }, { status: 502 });
+    }
+    
     const data = await res.json();
     
     if (data.error) {
       console.error('xAI API error:', data.error);
-      return NextResponse.json({ error: 'AI service error: ' + data.error.message }, { status: 502 });
+      return NextResponse.json({ error: 'AI service error: ' + (data.error.message || JSON.stringify(data.error)) }, { status: 502 });
     }
     
-    response = data.choices?.[0]?.message?.content || '{}';
+    if (!data.choices || data.choices.length === 0) {
+      console.error('No choices in response:', data);
+      return NextResponse.json({ error: 'AI returned empty response' }, { status: 502 });
+    }
+    
+    response = data.choices[0]?.message?.content || '{}';
     
     const clean = response.replace(/```json|```/g, '').trim();
     try {
