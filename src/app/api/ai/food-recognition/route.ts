@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (GEMINI_API_KEY) {
       try {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
 
         const prompt = `You are a nutritionist expert. Analyze this food image and provide nutritional information. 
         
