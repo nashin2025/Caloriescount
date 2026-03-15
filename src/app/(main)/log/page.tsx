@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Search, Camera, ScanLine, Plus, X } from 'lucide-react';
+import { Loader2, Search, Camera, ScanLine, Plus, X, Sparkles, Upload } from 'lucide-react';
 import type { MealType, FoodSearchResult } from '@/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -38,6 +39,21 @@ export default function LogPage() {
   const [customFat, setCustomFat] = useState('');
   const [logged, setLogged] = useState(false);
   const [manualMode, setManualMode] = useState(false);
+  const [aiMode, setAiMode] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<{
+    food_name: string;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    serving_size: string;
+    confidence: number;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const supabase = createClient();
   const { showToast } = useToast();
@@ -65,6 +81,59 @@ export default function LogPage() {
     return () => clearTimeout(debounce);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
+
+  const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCapturing(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setCapturedImage(base64);
+      await analyzeFood(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const analyzeFood = async (imageData: string) => {
+    setAnalyzing(true);
+    try {
+      const formData = new FormData();
+      const response = await fetch(imageData);
+      const blob = await response.blob();
+      formData.append('image', blob, 'food.jpg');
+
+      const res = await fetch('/api/ai/food-recognition', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        showToast(data.error, 'error');
+      } else {
+        setAiResult(data);
+        setCustomName(data.food_name || '');
+        setCustomCalories(String(data.calories || 0));
+        setCustomProtein(String(data.protein_g || 0));
+        setCustomCarbs(String(data.carbs_g || 0));
+        setCustomFat(String(data.fat_g || 0));
+      }
+    } catch (error) {
+      console.error('Analysis error:', error);
+      showToast('Failed to analyze food', 'error');
+    } finally {
+      setCapturing(false);
+      setAnalyzing(false);
+    }
+  };
+
+  const resetAiCapture = () => {
+    setCapturedImage(null);
+    setAiResult(null);
+    setAiMode(false);
+  };
 
   const handleSelectFood = (food: FoodSearchResult) => {
     setSelectedFood(food);
@@ -160,10 +229,20 @@ export default function LogPage() {
         ))}
       </div>
 
-      <Tabs value={manualMode ? 'manual' : 'search'} onValueChange={(v) => setManualMode(v === 'manual')}>
+      <Tabs value={aiMode ? 'ai' : manualMode ? 'manual' : 'search'} onValueChange={(v) => {
+        if (v === 'ai') setAiMode(true);
+        else {
+          setAiMode(false);
+          setManualMode(v === 'manual');
+        }
+      }}>
         <TabsList className="w-full">
-          <TabsTrigger value="search" className="flex-1">Search Food</TabsTrigger>
-          <TabsTrigger value="manual" className="flex-1">Manual Entry</TabsTrigger>
+          <TabsTrigger value="search" className="flex-1">Search</TabsTrigger>
+          <TabsTrigger value="ai" className="flex-1">
+            <Sparkles className="w-4 h-4 mr-1" />
+            AI Scan
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="flex-1">Manual</TabsTrigger>
         </TabsList>
 
         <TabsContent value="search" className="space-y-4 mt-4">
@@ -273,6 +352,155 @@ export default function LogPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="ai" className="space-y-4 mt-4">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleImageCapture}
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            accept="image/*"
+            // @ts-ignore - capture is valid but TypeScript doesn't recognize it
+            capture="camera"
+            className="hidden"
+            onChange={handleImageCapture}
+          />
+
+          {!capturedImage ? (
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div className="text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <ScanLine className="w-10 h-10 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">AI Food Scanner</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Take a photo of your food and AI will estimate the calories
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-20 flex flex-col gap-2"
+                  >
+                    <Upload className="w-6 h-6" />
+                    <span className="text-sm">Upload Photo</span>
+                  </Button>
+                  <Button
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="h-20 flex flex-col gap-2"
+                  >
+                    <Camera className="w-6 h-6" />
+                    <span className="text-sm">Take Photo</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : analyzing || capturing ? (
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                  <Image
+                    src={capturedImage}
+                    alt="Captured food"
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="text-center text-white">
+                      <Loader2 className="w-10 h-10 animate-spin mx-auto mb-2" />
+                      <p>Analyzing food...</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : aiResult ? (
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>{aiResult.food_name}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {aiResult.serving_size} • Confidence: {Math.round(aiResult.confidence * 100)}%
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={resetAiCapture}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted mb-4">
+                  <Image
+                    src={capturedImage}
+                    alt="Captured food"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="p-2 bg-muted rounded-lg">
+                    <p className="text-lg font-bold">{aiResult.calories}</p>
+                    <p className="text-xs text-muted-foreground">Cal</p>
+                  </div>
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <p className="text-lg font-bold text-blue-600">{aiResult.protein_g}g</p>
+                    <p className="text-xs text-muted-foreground">Protein</p>
+                  </div>
+                  <div className="p-2 bg-amber-50 rounded-lg">
+                    <p className="text-lg font-bold text-amber-600">{aiResult.carbs_g}g</p>
+                    <p className="text-xs text-muted-foreground">Carbs</p>
+                  </div>
+                  <div className="p-2 bg-purple-50 rounded-lg">
+                    <p className="text-lg font-bold text-purple-600">{aiResult.fat_g}g</p>
+                    <p className="text-xs text-muted-foreground">Fat</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Servings</Label>
+                    <Input
+                      type="number"
+                      value={servingSize}
+                      onChange={(e) => setServingSize(e.target.value)}
+                      min="0.25"
+                      step="0.25"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Unit</Label>
+                    <Select value={servingUnit} onValueChange={setServingUnit}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="serving">Serving</SelectItem>
+                        <SelectItem value="g">Grams</SelectItem>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="cup">Cup</SelectItem>
+                        <SelectItem value="piece">Piece</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={logFood} disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Log Food
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="manual" className="space-y-4 mt-4">
