@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const XAI_API_KEY = process.env.XAI_API_KEY;
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export const runtime = 'nodejs';
@@ -46,9 +43,8 @@ export async function POST(request: NextRequest) {
 
     if (GEMINI_API_KEY) {
       try {
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
-
+        const modelName = 'gemini-1.5-flash-8b';
+        
         const prompt = `You are a nutritionist expert. Analyze this food image and provide nutritional information. 
         
 Return ONLY valid JSON in this exact format:
@@ -64,15 +60,36 @@ Return ONLY valid JSON in this exact format:
 
 Provide realistic estimates based on what you see in the image.`;
 
-        const imagePart = {
-          inlineData: {
-            data: base64,
-            mimeType: mimeType
+        const requestBody = {
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType, data: base64 } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1000,
           }
         };
 
-        const result = await model.generateContent([prompt, imagePart]);
-        const response = result.response.text();
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        if (!res.ok) {
+          const error = await res.text();
+          console.error('Gemini API error:', res.status, error);
+          throw new Error('Gemini API failed');
+        }
+
+        const data = await res.json();
+        const response = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
         
         const clean = response.replace(/```json|```/g, '').trim();
         
