@@ -83,7 +83,7 @@ export default function Header({ user }: HeaderProps) {
       <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">🍏</span>
-          <span className="font-bold text-lg">NutriAI</span>
+          <span className="font-bold text-lg">CaloriesCount</span>
         </div>
 
         <div className="flex items-center gap-2">

@@ -6,7 +6,7 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'NutriAI - Smart Calorie Counter',
+  title: 'CaloriesCount - Smart Calorie Counter',
   description: 'AI-powered calorie counter and diet assistant. Track nutrition, get meal plans, and reach your goals with smart AI coaching.',
   manifest: '/manifest.json',
   icons: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'NutriAI',
+    title: 'CaloriesCount',
   },
   other: {
     'mobile-web-app-capable': 'yes',

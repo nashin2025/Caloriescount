@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     const safeContext = sanitizeContext(context);
 
-    const systemPrompt = `You are NutriAI, a supportive AI diet and nutrition coach.
+    const systemPrompt = `You are CaloriesCount AI, a supportive AI diet and nutrition coach.
 
 USER PROFILE:
 - Name: ${safeContext.name}

@@ -1,4 +1,4 @@
-# NutriAI - Smart Calorie & Fitness Tracker
+# CaloriesCount - Smart Calorie & Fitness Tracker
 
 A modern, AI-powered nutrition and fitness tracking application built with Next.js, Supabase, and Groq AI.
 

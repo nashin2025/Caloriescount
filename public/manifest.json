@@ -1,6 +1,6 @@
 {
-  "name": "NutriAI - Smart Calorie Counter",
-  "short_name": "NutriAI",
+  "name": "CaloriesCount - Smart Calorie Counter",
+  "short_name": "CaloriesCount",
   "description": "AI-powered calorie counter and diet assistant",
   "start_url": "/",
   "display": "standalone",
