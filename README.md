@@ -10,6 +10,7 @@ A modern, AI-powered nutrition and fitness tracking application built with Next.
 
 ### Core Functionality
 - **Food Logging** - Search and log meals with nutritional data from Open Food Facts
+- **AI Food Scanner** - Take a photo of food and AI estimates calories and nutrition
 - **Calorie Tracking** - Track daily calories, protein, carbs, and fat intake
 - **Water Tracking** - Monitor daily water consumption
 - **Weight Progress** - Log and visualize weight changes over time
@@ -21,6 +22,8 @@ A modern, AI-powered nutrition and fitness tracking application built with Next.
 - **Exercise Animations** - Visual demonstrations for exercises
 
 ### Additional Features
+- **Dark Mode** - Toggle between light, dark, and system themes
+- **Smart Notifications** - Calorie and water intake reminders
 - **User Onboarding** - Personalized setup with goals and body metrics
 - **Progress Dashboard** - Visual overview of daily and weekly progress
 - **Streak Tracking** - Gamify your fitness journey
@@ -32,7 +35,7 @@ A modern, AI-powered nutrition and fitness tracking application built with Next.
 - **Frontend**: Next.js 14, React 18, TypeScript
 - **Styling**: Tailwind CSS, Radix UI
 - **Backend**: Next.js API Routes, Supabase (Auth, Database)
-- **AI**: Groq API / xAI (Grok)
+- **AI**: Groq API (text), xAI Grok (vision)
 - **Data**: Open Food Facts API
 - **State**: Zustand
 
@@ -43,7 +46,7 @@ A modern, AI-powered nutrition and fitness tracking application built with Next.
 - Node.js 18+
 - npm or yarn
 - Supabase account
-- Groq API key
+- Groq or xAI API key
 
 ### Installation
 
@@ -67,11 +70,16 @@ Create `.env.local` with:
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 GROQ_API_KEY=your_groq_api_key
+XAI_API_KEY=your_xai_api_key
 ```
+
+**API Key Setup:**
+- **Groq API** (for text AI): Get from https://console.groq.com
+- **xAI API** (for food image recognition): Get from https://console.x.ai
 
 ### Database Setup
 
-1. Create a Supabase project
+1. Create a Supabase project at https://supabase.com
 2. Run the SQL migrations in `supabase/schema.sql`
 3. Configure RLS policies as needed
 
@@ -98,12 +106,12 @@ src/
 │   ├── (auth)/           # Auth pages (login, signup, onboarding)
 │   ├── (main)/           # Protected pages
 │   │   ├── dashboard/   # Main dashboard
-│   │   ├── log/         # Food logging
+│   │   ├── log/         # Food logging with AI scanning
 │   │   ├── exercise/    # Exercise tracking
 │   │   ├── progress/    # Progress charts
 │   │   ├── coach/       # AI chat
-│   │   └── settings/    # User settings
-│   └── api/             # API routes
+│   │   └── settings/    # User settings & dark mode
+│   └── api/             # API routes (AI, food search)
 ├── components/           # React components
 ├── lib/                  # Utilities and clients
 ├── store/               # Zustand state management
